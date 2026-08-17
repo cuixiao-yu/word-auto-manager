@@ -1,5 +1,6 @@
 from flask import Flask, jsonify
 from flask_cors import CORS
+import pygetwindow as gw
 
 app = Flask(__name__)
 CORS(app)
@@ -9,7 +10,20 @@ window = None
 
 def find_window():
     global window
-    pass
+    windows = gw.getAllWindows()
+    for w in windows:
+        title = w.title
+        if not title:
+            continue
+        if 'vivoScreen' in title:
+            window = w
+            print(f'找到目标窗口: "{title}"')
+            return window
+    print('未找到目标窗口，请确保:')
+    print('  1. vivo 办公套件已打开')
+    print('  2. 手机已连接')
+    print('  3. 已打开投屏窗口')
+    return None
 
 def capture():
     pass
@@ -45,7 +59,24 @@ def running_check():
 
 @app.route('/window', methods=['GET'])
 def window_info_handler():
-    pass
+    global window
+    window = find_window()
+    if window is None:
+        return jsonify({
+            "found": False,
+            "message": "未找到目标窗口"
+        })
+    else:
+        return jsonify({
+            "found": True,
+            "title": window.title,
+            "left": window.left,
+            "top": window.top,
+            "width": window.width,
+            "height": window.height,
+            "is_minimized": window.isMinimized,
+            "is_active": window.isActive
+        })
 
 @app.route('/scan_once', methods=['GET'])
 def scan_once_handler():
@@ -57,11 +88,11 @@ def scan_all_handler():
 
 if __name__ == '__main__':
     print('=' * 50)
-    print('API is running...')
+    print('API 服务器启动中...')
     print("=" * 50)
 
-    print('Successfully Running!\n http://localhost:5000')
-    print("API list:")
+    print('启动成功!\n监听地址: http://localhost:5000')
+    print("API 接口:")
     print("  GET /api-check")
     print("  GET /window")
     print("  GET /scan_once")
