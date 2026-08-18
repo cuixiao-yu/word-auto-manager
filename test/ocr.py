@@ -1,7 +1,7 @@
 import sys
 sys.path.append('src')
 
-from word_api import capture, extract, pre_process
+from word_api import capture, extract
 
 img = capture()
 
