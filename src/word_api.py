@@ -1,6 +1,8 @@
 from flask import Flask, jsonify
 from flask_cors import CORS
 import pygetwindow as gw
+from PIL import ImageGrab
+import ctypes
 
 app = Flask(__name__)
 CORS(app)
@@ -26,7 +28,31 @@ def find_window():
     return None
 
 def capture():
-    pass
+    global window
+    window = find_window()
+    if window is None:
+        print('未找到目标窗口，无法截图')
+        return None
+    else:
+        try:
+            window.activate()
+            print("已激活该窗口")
+        except Exception as e:
+            print(f'无法激活窗口: {e}')
+        
+        factor = ctypes.windll.shcore.GetScaleFactorForDevice(0) / 100
+
+        left = int(window.left * factor)
+        top = int(window.top * factor)
+        width = int(window.width * factor)
+        height = int(window.height * factor)
+
+        print(f'缩放比例: {factor}')
+        print(f'窗口信息: left={left}, top={top}, width={width}, height={height}')
+
+        screenshot = ImageGrab.grab(bbox=(left, top, left + width, top + height))
+        screenshot.save('outfile/screenshot.png')
+        print('截图已保存: outfile/screenshot.png')
 
 def pre_process(image):
     pass
