@@ -3,11 +3,13 @@ from flask_cors import CORS
 import pygetwindow as gw
 from PIL import ImageGrab
 import ctypes
+import easyocr
+import numpy as np
 
 app = Flask(__name__)
 CORS(app)
 
-ocr = None
+reader = None
 window = None
 
 def find_window():
@@ -54,14 +56,34 @@ def capture():
         screenshot.save('outfile/screenshot.png')
         print('截图已保存: outfile/screenshot.png')
 
+        return screenshot
+
 def pre_process(image):
     pass
 
 def crop_word(image):
     pass
 
+def init_ocr():
+    global reader
+
+    print("正在初始化 OCR 引擎...")
+    reader = easyocr.Reader(['ch_sim', 'en'], gpu = False)
+    print("初始化完成!")
+
+    return reader
+
 def extract(image):
-    pass
+    global reader
+    reader = init_ocr()
+    
+    img_arr = np.array(image)
+    
+    res = reader.readtext(img_arr)
+    
+    texts = [item[1] for item in res]
+    print(f'共识别到 {len(texts)} 段文字')
+    return texts
 
 def parse_word_line(text):
     pass
