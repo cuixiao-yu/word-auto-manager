@@ -62,7 +62,22 @@ def pre_process(image):
     pass
 
 def crop_word(image):
-    pass
+    width, height = image.size
+    
+    left = int(width * 0.08)
+    top = int(height * 0.22)
+    right = int(width * 0.77)
+    bottom = int(height * 0.84)
+    
+    cropped = image.crop((left, top, right, bottom))
+    
+    print(f'裁剪区域: left={left}, top={top}, right={right}, bottom={bottom}')
+    print(f'裁剪尺寸: {cropped.width} x {cropped.height}')
+    
+    cropped.save('outfile/cropped.png')
+    print("已保存: outfile/cropped.png")
+    
+    return cropped
 
 def init_ocr():
     global reader
