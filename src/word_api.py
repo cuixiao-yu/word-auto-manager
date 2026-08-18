@@ -1,16 +1,15 @@
 from flask import Flask, jsonify
 from flask_cors import CORS
 import pygetwindow as gw
-from PIL import Image, ImageGrab
+from PIL import ImageGrab
 import ctypes
-import easyocr
 import numpy as np
-import cv2
+from paddleocr import PaddleOCR
 
 app = Flask(__name__)
 CORS(app)
 
-reader = None
+ocr = None
 window = None
 
 def find_window():
@@ -36,97 +35,74 @@ def capture():
     if window is None:
         print('未找到目标窗口，无法截图')
         return None
-    else:
-        try:
-            window.activate()
-            print("已激活该窗口")
-        except Exception as e:
-            print(f'无法激活窗口: {e}')
-        
+    
+    try:
+        window.activate()
+        print('已激活该窗口')
+    except Exception as e:
+        print(f'无法激活窗口: {e}')
+    
+    try:
         factor = ctypes.windll.shcore.GetScaleFactorForDevice(0) / 100
-
-        left = int(window.left * factor)
-        top = int(window.top * factor)
-        width = int(window.width * factor)
-        height = int(window.height * factor)
-
-        print(f'缩放比例: {factor}')
-        print(f'窗口信息: left={left}, top={top}, width={width}, height={height}')
-
-        screenshot = ImageGrab.grab(bbox=(left, top, left + width, top + height))
-        screenshot.save('outfile/screenshot.png')
-        print('截图已保存: outfile/screenshot.png')
-
-        return screenshot
-
-def pre_process(image):
-    img_arr = np.array(image)
+    except:
+        factor = 1.25
     
-    gray = cv2.cvtColor(img_arr, cv2.COLOR_RGB2GRAY)
+    left = int(window.left * factor)
+    top = int(window.top * factor)
+    width = int(window.width * factor)
+    height = int(window.height * factor)
     
-    binary = cv2.adaptiveThreshold(
-        gray, 255, 
-        cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
-        cv2.THRESH_BINARY, 11, 2
-    )
+    print(f'缩放比例: {factor}')
+    print(f'窗口信息: left={left}, top={top}, width={width}, height={height}')
     
-    kernel = np.ones((1, 1), np.uint8)
-    denoised = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, kernel)
-    
-    processed = Image.fromarray(denoised)
-    
-    processed.save('outfile/preprocessed.png')
-    print("预处理完成，已保存: outfile/preprocessed.png")
-    
-    return processed
+    screenshot = ImageGrab.grab(bbox=(left, top, left + width, top + height))
+    screenshot.save('outfile/screenshot.png')
+    print('截图已保存: outfile/screenshot.png')
+    return screenshot
 
 def crop_word(image):
     width, height = image.size
-    
-    left = int(width * 0.08)
+    left = int(width * 0.09)
     top = int(height * 0.22)
-    right = int(width * 0.77)
-    bottom = int(height * 0.84)
-    
+    right = int(width * 0.78)
+    bottom = int(height * 0.85)
     cropped = image.crop((left, top, right, bottom))
-    
     print(f'裁剪区域: left={left}, top={top}, right={right}, bottom={bottom}')
     print(f'裁剪尺寸: {cropped.width} x {cropped.height}')
-    
     cropped.save('outfile/cropped.png')
-    print("已保存: outfile/cropped.png")
-    
     return cropped
 
 def init_ocr():
-    global reader
+    global ocr
 
-    print("正在初始化 OCR 引擎...")
-    reader = easyocr.Reader(['ch_sim', 'en'], gpu = False)
-    print("初始化完成!")
+    print('正在初始化 OCR 引擎...')
+    ocr = PaddleOCR(use_angle_cls=True, lang='ch')
+    print('初始化完成!')
 
-    return reader
+    return ocr
 
 def extract(image):
-    global reader
-    reader = init_ocr()
+    global ocr
+    if ocr is None:
+        ocr = init_ocr()
     
     cropped = crop_word(image)
-    processed = pre_process(cropped)
-
-    img_arr = np.array(processed)
     
-    res = reader.readtext(img_arr)
+    img_array = np.array(cropped)
+    result = ocr.ocr(img_array)
     
-    texts = [item[1] for item in res]
+    texts = []
+    for line in result:
+        if line is None:
+            continue
+        for word_info in line:
+            text = word_info[1][0]
+            confidence = word_info[1][1]
+            if confidence > 0.5:
+                texts.append(text)
+    
     print(f'共识别到 {len(texts)} 段文字')
     return texts
-
-def parse_word_line(text):
-    pass
-
-def filter_and_parse(texts):
-    pass
 
 def scroll():
     global window
@@ -175,7 +151,6 @@ if __name__ == '__main__':
     print('=' * 50)
     print('API 服务器启动中...')
     print("=" * 50)
-
     print('启动成功!\n监听地址: http://localhost:5000')
     print("API 接口:")
     print("  GET /api-check")
@@ -183,5 +158,4 @@ if __name__ == '__main__':
     print("  GET /scan_once")
     print("  GET /scan_all")
     print("=" * 50)
-
     app.run(host='localhost', port=5000, debug=False)
