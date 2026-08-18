@@ -1,10 +1,11 @@
 from flask import Flask, jsonify
 from flask_cors import CORS
 import pygetwindow as gw
-from PIL import ImageGrab
+from PIL import Image, ImageGrab
 import ctypes
 import easyocr
 import numpy as np
+import cv2
 
 app = Flask(__name__)
 CORS(app)
@@ -59,7 +60,25 @@ def capture():
         return screenshot
 
 def pre_process(image):
-    pass
+    img_arr = np.array(image)
+    
+    gray = cv2.cvtColor(img_arr, cv2.COLOR_RGB2GRAY)
+    
+    binary = cv2.adaptiveThreshold(
+        gray, 255, 
+        cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
+        cv2.THRESH_BINARY, 11, 2
+    )
+    
+    kernel = np.ones((1, 1), np.uint8)
+    denoised = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, kernel)
+    
+    processed = Image.fromarray(denoised)
+    
+    processed.save('outfile/preprocessed.png')
+    print("预处理完成，已保存: outfile/preprocessed.png")
+    
+    return processed
 
 def crop_word(image):
     width, height = image.size
@@ -92,7 +111,10 @@ def extract(image):
     global reader
     reader = init_ocr()
     
-    img_arr = np.array(image)
+    cropped = crop_word(image)
+    processed = pre_process(cropped)
+
+    img_arr = np.array(processed)
     
     res = reader.readtext(img_arr)
     
