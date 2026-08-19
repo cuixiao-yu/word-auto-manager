@@ -13,16 +13,14 @@ ocr = None
 window = None
 
 def find_window():
-    global window
     windows = gw.getAllWindows()
     for w in windows:
         title = w.title
         if not title:
             continue
         if 'vivoScreen' in title:
-            window = w
             print(f'找到目标窗口: "{title}"')
-            return window
+            return w
     print('未找到目标窗口，请确保:')
     print('  1. vivo 办公套件已打开')
     print('  2. 手机已连接')
@@ -31,6 +29,7 @@ def find_window():
 
 def capture():
     global window
+
     window = find_window()
     if window is None:
         print('未找到目标窗口，无法截图')
@@ -58,18 +57,22 @@ def capture():
     screenshot = ImageGrab.grab(bbox=(left, top, left + width, top + height))
     screenshot.save('outfile/screenshot.png')
     print('截图已保存: outfile/screenshot.png')
+
     return screenshot
 
 def crop_word(image):
     width, height = image.size
+
     left = int(width * 0.09)
     top = int(height * 0.22)
     right = int(width * 0.78)
     bottom = int(height * 0.85)
+
     cropped = image.crop((left, top, right, bottom))
     print(f'裁剪区域: left={left}, top={top}, right={right}, bottom={bottom}')
     print(f'裁剪尺寸: {cropped.width} x {cropped.height}')
     cropped.save('outfile/cropped.png')
+
     return cropped
 
 def init_ocr():
@@ -83,6 +86,7 @@ def init_ocr():
 
 def extract(image):
     global ocr
+
     if ocr is None:
         ocr = init_ocr()
     
@@ -116,11 +120,14 @@ def scan_all(max_pages=50):
 
 @app.route('/api-check', methods=['GET'])
 def running_check():
-    return jsonify({"status": "ok"})
+    return jsonify({
+        "status": "ok"
+    })
 
 @app.route('/window', methods=['GET'])
 def window_info_handler():
     global window
+    
     window = find_window()
     if window is None:
         return jsonify({
@@ -150,12 +157,13 @@ def scan_all_handler():
 if __name__ == '__main__':
     print('=' * 50)
     print('API 服务器启动中...')
-    print("=" * 50)
+    print('=' * 50)
     print('启动成功!\n监听地址: http://localhost:5000')
-    print("API 接口:")
-    print("  GET /api-check")
-    print("  GET /window")
-    print("  GET /scan_once")
-    print("  GET /scan_all")
-    print("=" * 50)
+    print('API 接口:')
+    print('  GET /api-check')
+    print('  GET /window')
+    print('  GET /scan_once')
+    print('  GET /scan_all')
+    print('=' * 50)
+
     app.run(host='localhost', port=5000, debug=False)
